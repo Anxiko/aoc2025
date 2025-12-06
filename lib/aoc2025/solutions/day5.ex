@@ -14,6 +14,7 @@ defmodule Aoc2025.Solutions.Day5 do
           ingredients: [ingredient()]
         }
 
+  @impl true
   def solve(input, part, _mode) do
     database = parse(input)
 
