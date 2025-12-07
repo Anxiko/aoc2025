@@ -6,6 +6,7 @@ defmodule Aoc2025.Solutions do
   alias Aoc2025.Solutions.Day4
   alias Aoc2025.Solutions.Day5
   alias Aoc2025.Solutions.Day6
+  alias Aoc2025.Solutions.Day7
 
   @day_mapping %{
     1 => Day1,
@@ -13,7 +14,8 @@ defmodule Aoc2025.Solutions do
     3 => Day3,
     4 => Day4,
     5 => Day5,
-    6 => Day6
+    6 => Day6,
+    7 => Day7
   }
 
   @spec get_solver(non_neg_integer()) :: DaySolver.t()
