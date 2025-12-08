@@ -29,6 +29,7 @@ defmodule Aoc2025.Solutions.Day7 do
     case part do
       :part1 ->
         experiment.splits
+
       :part2 ->
         total_power(experiment)
     end

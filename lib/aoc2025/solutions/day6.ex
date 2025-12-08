@@ -105,7 +105,9 @@ defmodule Aoc2025.Solutions.Day6 do
       end)
 
     case number do
-      "" -> acc
+      "" ->
+        acc
+
       number ->
         number = number |> String.trim() |> String.to_integer()
         do_vertical_read(Enum.reverse(column), [number | acc])
