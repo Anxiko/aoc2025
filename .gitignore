@@ -24,3 +24,6 @@ aoc2025-*.tar
 
 # Puzzle inputs
 /inputs/
+
+# Dirt testing file
+/lib/testing.ex

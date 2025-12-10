@@ -11,7 +11,7 @@ defmodule Aoc2025 do
   end
 
   @spec load_input(Types.day(), Types.mode()) :: Types.input()
-  defp load_input(day, mode) do
+  def load_input(day, mode) do
     "inputs/day#{day}/#{mode}.txt"
     |> File.read!()
     |> String.trim_trailing("\n")

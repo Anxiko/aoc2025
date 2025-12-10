@@ -68,3 +68,7 @@ defmodule Aoc2025.Shared.Coord do
     )
   end
 end
+
+defimpl String.Chars, for: Aoc2025.Shared.Coord do
+  def to_string(%@for{} = coord), do: "(#{coord.x}, #{coord.y})"
+end
