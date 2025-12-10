@@ -25,5 +25,8 @@ aoc2025-*.tar
 # Puzzle inputs
 /inputs/
 
-# Dirt testing file
+# Dirty testing file
 /lib/testing.ex
+
+# VS Code
+/.vscode/
