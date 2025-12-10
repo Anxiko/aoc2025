@@ -37,7 +37,8 @@ defmodule Aoc2025.Solutions.Day10 do
       end
 
     machines
-    |> Enum.map(&min_presses(&1, target))
+    |> Task.async_stream(&min_presses(&1, target), timeout: :infinity)
+    |> Enum.map(fn {:ok, value} -> value end)
     |> Enum.sum()
   end
 
@@ -67,7 +68,7 @@ defmodule Aoc2025.Solutions.Day10 do
 
   @dialyzer {:nowarn_function, min_presses: 4}
   @spec min_presses([t()], target(), MapSet.t(t()), non_neg_integer()) :: non_neg_integer()
-  defp min_presses([_|_] = machines, target, %MapSet{} = seen, presses) do
+  defp min_presses([_ | _] = machines, target, %MapSet{} = seen, presses) do
     if Enum.any?(machines, &(completion_status(&1, target) == :complete)) do
       presses
     else
