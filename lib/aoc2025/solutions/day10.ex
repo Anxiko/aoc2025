@@ -49,18 +49,22 @@ defmodule Aoc2025.Solutions.Day10 do
 
   @spec min_presses(t()) :: non_neg_integer()
   def min_presses(%__MODULE__{} = machine) do
-    min_presses([machine], 0)
+    min_presses([machine], MapSet.new(), 0)
   end
 
-  defp min_presses(machines, presses) do
+  @spec min_presses([t()], MapSet.t(t()), non_neg_integer()) :: non_neg_integer()
+  defp min_presses(machines, %MapSet{} = seen, presses) do
     if Enum.any?(machines, &solved?/1) do
       presses
     else
-      machines
-      |> Enum.flat_map(fn %__MODULE__{} = machine ->
-        Enum.map(machine.buttons, &press_button(machine, &1))
-      end)
-      |> min_presses(presses + 1)
+      machines =
+        machines
+        |> Enum.flat_map(fn %__MODULE__{} = machine ->
+          Enum.map(machine.buttons, &press_button(machine, &1))
+        end)
+        |> Enum.filter(fn machine -> not MapSet.member?(seen, machine) end)
+
+      min_presses(machines, machines |> MapSet.new() |> MapSet.union(seen), presses + 1)
     end
   end
 
