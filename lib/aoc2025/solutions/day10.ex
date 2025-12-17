@@ -30,16 +30,22 @@ defmodule Aoc2025.Solutions.Day10 do
   def solve(input, part, _mode) do
     machines = Enum.map(input, &parse/1)
 
-    target =
-      case part do
-        :part1 -> :lights
-        :part2 -> :joltages
-      end
+    case part do
+      :part1 ->
+        machines
+        |> Enum.map(&min_presses(&1, :lights))
+        |> Enum.sum()
 
-    machines
-    |> Task.async_stream(&min_presses(&1, target), timeout: :infinity)
-    |> Enum.map(fn {:ok, value} -> value end)
-    |> Enum.sum()
+      :part2 ->
+        machines
+        |> Enum.map(fn %__MODULE__{} = machine ->
+          IO.inspect(machine, label: "Solving")
+
+          branch_and_bound(machine)
+          |> IO.inspect(label: "Presses for #{inspect(machine)}")
+        end)
+        |> Enum.sum()
+    end
   end
 
   @spec new(lights(), [button()], [joltage()]) :: t()
@@ -60,6 +66,99 @@ defmodule Aoc2025.Solutions.Day10 do
 
     new(parse_lights(lights), parse_buttons(buttons), parse_target_joltages(joltages))
   end
+
+  @spec branch_and_bound(t()) :: non_neg_integer()
+  def branch_and_bound(%__MODULE__{} = machine) do
+    branch_and_bound(machine.target_joltages, machine.buttons)
+  end
+
+  @spec branch_and_bound([joltage()], [button()]) :: non_neg_integer()
+  def branch_and_bound(target, buttons) do
+    upper_bound = ceil(Enum.sum(target) / length(Enum.min_by(buttons, &length/1)))
+
+    branch_and_bound(target, Enum.sort_by(buttons, &length/1, :desc), 0, upper_bound)
+  end
+
+  @spec branch_and_bound([joltage()], [button()], non_neg_integer(), non_neg_integer()) ::
+          non_neg_integer()
+  defp branch_and_bound(_target, _buttons, presses, best) when best <= presses,
+    do: best
+
+  defp branch_and_bound(target, [], presses, best) do
+    if Enum.all?(target, &(&1 == 0)) do
+      IO.inspect(presses, label: "Solution found, best is #{best}")
+      update_best(best, presses)
+    else
+      best
+    end
+  end
+
+  defp branch_and_bound(target, [button | buttons], presses, best) do
+    case max_presses(target, button) do
+      {:exact, button_presses} ->
+        IO.inspect(presses + button_presses, label: "Solution found, best is #{best}")
+        update_best(best, presses + button_presses)
+
+      {:max_possible, max_button_presses} ->
+        lower_bound = ceil(Enum.sum(target) / length(Enum.max_by([button | buttons], &length/1)))
+
+        if presses + lower_bound < best do
+          max_button_presses..0//-1
+          |> Enum.reduce(best, fn button_presses, best ->
+            presses =
+              target
+              |> target_after_pressing(button, button_presses)
+              |> branch_and_bound(buttons, presses + button_presses, best)
+
+            update_best(best, presses)
+          end)
+        else
+          best
+        end
+    end
+  end
+
+  @spec max_presses([joltage()], button()) :: {:exact | :max_possible, non_neg_integer()}
+  defp max_presses(target, button) do
+    max_possible =
+      target
+      |> Enum.with_index()
+      |> Enum.filter(fn {_value, idx} -> idx in button end)
+      |> Enum.min_by(fn {value, _idx} -> value end)
+      |> then(fn {value, _idx} -> value end)
+
+    exact? =
+      target
+      |> Enum.with_index()
+      |> Enum.all?(fn {value, idx} ->
+        if idx in button do
+          value == max_possible
+        else
+          value == 0
+        end
+      end)
+
+    if exact?, do: {:exact, max_possible}, else: {:max_possible, max_possible}
+  end
+
+  @spec target_after_pressing([joltage()], button(), non_neg_integer()) :: [joltage()]
+  defp target_after_pressing(target, _button, 0), do: target
+
+  defp target_after_pressing(target, button, presses) do
+    target
+    |> Enum.with_index()
+    |> Enum.map(fn {value, idx} ->
+      if idx in button do
+        value - presses
+      else
+        value
+      end
+    end)
+  end
+
+  @spec update_best(non_neg_integer() | nil, non_neg_integer()) :: non_neg_integer()
+  defp update_best(nil, presses), do: presses
+  defp update_best(best, presses), do: min(best, presses)
 
   @spec min_presses(t(), target()) :: non_neg_integer()
   def min_presses(%__MODULE__{} = machine, target) do
