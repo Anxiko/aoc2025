@@ -1,4 +1,6 @@
 defmodule Aoc2025.Solutions.Day10 do
+  alias Aoc2025.Shared.Lists
+
   @enforce_keys [
     :target_lights,
     :current_lights,
@@ -41,7 +43,8 @@ defmodule Aoc2025.Solutions.Day10 do
         |> Enum.map(fn %__MODULE__{} = machine ->
           IO.inspect(machine, label: "Solving")
 
-          branch_and_bound(machine)
+          {:ok, cache} = Agent.start_link(&Map.new/0)
+          presses_for_target(machine.target_joltages, machine.buttons, cache)
           |> IO.inspect(label: "Presses for #{inspect(machine)}")
         end)
         |> Enum.sum()
@@ -65,6 +68,83 @@ defmodule Aoc2025.Solutions.Day10 do
       Regex.named_captures(@machine_pattern, machine)
 
     new(parse_lights(lights), parse_buttons(buttons), parse_target_joltages(joltages))
+  end
+
+  @spec presses_for_target([joltage()], [button()], Agent.agent()) :: non_neg_integer() | nil
+  def presses_for_target(target, buttons, cache) do
+    if Enum.all?(target, &(&1 == 0)) do
+      0
+    else
+      case Agent.get(cache, &Map.fetch(&1, {target, buttons})) do
+        {:ok, solution} ->
+          solution
+
+        :error ->
+          lights = Enum.map(target, fn joltage -> rem(joltage, 2) == 1 end)
+
+          case presses_for_lights(lights, buttons) do
+            [] ->
+              nil
+
+            subsets ->
+              subsets
+              |> Enum.map(fn subset ->
+                target =
+                  Enum.reduce(subset, target, fn button, target ->
+                    reduce_target(target, button)
+                  end)
+
+                half_target = Enum.map(target, &div(&1, 2))
+
+                case presses_for_target(half_target, buttons, cache) do
+                  nil -> nil
+                  presses_for_half_target -> length(subsets) + 2 * presses_for_half_target
+                end
+              end)
+              |> Enum.filter(&(&1 != nil))
+              |> case do
+                [] -> nil
+                presses -> Enum.min(presses)
+              end
+          end
+          |> tap(fn solution ->
+            Agent.update(cache, &Map.put(&1, {target, buttons}, solution))
+          end)
+      end
+    end
+  end
+
+  @spec presses_for_lights(lights(), [button()]) :: [[button()]]
+  def presses_for_lights(lights, buttons) do
+    0..length(buttons)
+    |> Stream.flat_map(&Lists.combinations(buttons, &1))
+    |> Enum.filter(fn subsets ->
+      subsets
+      |> Enum.reduce(lights, fn button, lights -> toggle_lights(lights, button) end)
+      |> Enum.all?(&(&1 == false))
+    end)
+  end
+
+  @spec toggle_lights(lights(), button()) :: lights()
+  defp toggle_lights(lights, button) do
+    Enum.with_index(lights, fn light, index ->
+      if index in button do
+        not light
+      else
+        light
+      end
+    end)
+  end
+
+  @spec reduce_target([joltage()], button()) :: button()
+  defp reduce_target(target, button) do
+    Enum.with_index(target, fn joltage, index ->
+      if index in button do
+        joltage - 1
+      else
+        joltage
+      end
+    end)
   end
 
   @spec branch_and_bound(t()) :: non_neg_integer()
