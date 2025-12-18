@@ -35,13 +35,17 @@ defmodule Aoc2025.Solutions.Day10 do
     case part do
       :part1 ->
         machines
-        |> Enum.map(&min_presses(&1, :lights))
+        |> Enum.map(fn %__MODULE__{} = machine ->
+          machine.target_lights
+          |> presses_for_lights(machine.buttons)
+          |> Enum.map(&length/1)
+          |> Enum.min()
+        end)
         |> Enum.sum()
 
       :part2 ->
         machines
         |> Enum.map(fn %__MODULE__{} = machine ->
-
           presses_for_target(machine.target_joltages, machine.buttons)
         end)
         |> Enum.sum()
