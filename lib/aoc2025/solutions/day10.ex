@@ -44,6 +44,7 @@ defmodule Aoc2025.Solutions.Day10 do
           IO.inspect(machine, label: "Solving")
 
           {:ok, cache} = Agent.start_link(&Map.new/0)
+
           presses_for_target(machine.target_joltages, machine.buttons, cache)
           |> IO.inspect(label: "Presses for #{inspect(machine)}")
         end)
@@ -72,45 +73,50 @@ defmodule Aoc2025.Solutions.Day10 do
 
   @spec presses_for_target([joltage()], [button()], Agent.agent()) :: non_neg_integer() | nil
   def presses_for_target(target, buttons, cache) do
-    if Enum.all?(target, &(&1 == 0)) do
-      0
-    else
-      case Agent.get(cache, &Map.fetch(&1, {target, buttons})) do
-        {:ok, solution} ->
-          solution
+    cond do
+      Enum.all?(target, &(&1 == 0)) ->
+        0
 
-        :error ->
-          lights = Enum.map(target, fn joltage -> rem(joltage, 2) == 1 end)
+      Enum.any?(target, &(&1 < 0)) ->
+        nil
 
-          case presses_for_lights(lights, buttons) do
-            [] ->
-              nil
+      true ->
+        case Agent.get(cache, &Map.fetch(&1, {target, buttons})) do
+          {:ok, solution} ->
+            solution
 
-            subsets ->
-              subsets
-              |> Enum.map(fn subset ->
-                target =
-                  Enum.reduce(subset, target, fn button, target ->
-                    reduce_target(target, button)
-                  end)
+          :error ->
+            lights = Enum.map(target, fn joltage -> rem(joltage, 2) == 1 end)
 
-                half_target = Enum.map(target, &div(&1, 2))
+            case presses_for_lights(lights, buttons) do
+              [] ->
+                nil
 
-                case presses_for_target(half_target, buttons, cache) do
-                  nil -> nil
-                  presses_for_half_target -> length(subsets) + 2 * presses_for_half_target
+              subsets ->
+                subsets
+                |> Enum.map(fn subset ->
+                  target =
+                    Enum.reduce(subset, target, fn button, target ->
+                      reduce_target(target, button)
+                    end)
+
+                  half_target = Enum.map(target, &div(&1, 2))
+
+                  case presses_for_target(half_target, buttons, cache) do
+                    nil -> nil
+                    presses_for_half_target -> length(subsets) + 2 * presses_for_half_target
+                  end
+                end)
+                |> Enum.filter(&(&1 != nil))
+                |> case do
+                  [] -> nil
+                  presses -> Enum.min(presses)
                 end
-              end)
-              |> Enum.filter(&(&1 != nil))
-              |> case do
-                [] -> nil
-                presses -> Enum.min(presses)
-              end
-          end
-          |> tap(fn solution ->
-            Agent.update(cache, &Map.put(&1, {target, buttons}, solution))
-          end)
-      end
+            end
+            |> tap(fn solution ->
+              Agent.update(cache, &Map.put(&1, {target, buttons}, solution))
+            end)
+        end
     end
   end
 
