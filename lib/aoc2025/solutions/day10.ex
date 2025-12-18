@@ -41,12 +41,8 @@ defmodule Aoc2025.Solutions.Day10 do
       :part2 ->
         machines
         |> Enum.map(fn %__MODULE__{} = machine ->
-          IO.inspect(machine, label: "Solving")
 
-          {:ok, cache} = Agent.start_link(&Map.new/0)
-
-          presses_for_target(machine.target_joltages, machine.buttons, cache)
-          |> IO.inspect(label: "Presses for #{inspect(machine)}")
+          presses_for_target(machine.target_joltages, machine.buttons)
         end)
         |> Enum.sum()
     end
@@ -69,6 +65,12 @@ defmodule Aoc2025.Solutions.Day10 do
       Regex.named_captures(@machine_pattern, machine)
 
     new(parse_lights(lights), parse_buttons(buttons), parse_target_joltages(joltages))
+  end
+
+  @spec presses_for_target([joltage()], [button()]) :: non_neg_integer() | nil
+  def presses_for_target(target, buttons) do
+    {:ok, cache} = Agent.start_link(&Map.new/0)
+    presses_for_target(target, buttons, cache)
   end
 
   @spec presses_for_target([joltage()], [button()], Agent.agent()) :: non_neg_integer() | nil
@@ -104,7 +106,7 @@ defmodule Aoc2025.Solutions.Day10 do
 
                   case presses_for_target(half_target, buttons, cache) do
                     nil -> nil
-                    presses_for_half_target -> length(subsets) + 2 * presses_for_half_target
+                    presses_for_half_target -> length(subset) + 2 * presses_for_half_target
                   end
                 end)
                 |> Enum.filter(&(&1 != nil))
@@ -172,7 +174,6 @@ defmodule Aoc2025.Solutions.Day10 do
 
   defp branch_and_bound(target, [], presses, best) do
     if Enum.all?(target, &(&1 == 0)) do
-      IO.inspect(presses, label: "Solution found, best is #{best}")
       update_best(best, presses)
     else
       best
@@ -182,7 +183,6 @@ defmodule Aoc2025.Solutions.Day10 do
   defp branch_and_bound(target, [button | buttons], presses, best) do
     case max_presses(target, button) do
       {:exact, button_presses} ->
-        IO.inspect(presses + button_presses, label: "Solution found, best is #{best}")
         update_best(best, presses + button_presses)
 
       {:max_possible, max_button_presses} ->
