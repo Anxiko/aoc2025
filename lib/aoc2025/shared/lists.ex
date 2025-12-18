@@ -5,4 +5,15 @@ defmodule Aoc2025.Shared.Lists do
       {left, right}
     end
   end
+
+  @spec combinations([element], non_neg_integer()) :: [[element]] when element: any()
+  def combinations(_elements, 0), do: [[]]
+  def combinations([], _count), do: []
+
+  def combinations([h | t], count) when count > 0 do
+    with_h = for comb <- combinations(t, count - 1), do: [h | comb]
+    without_h = combinations(t, count)
+
+    with_h ++ without_h
+  end
 end
